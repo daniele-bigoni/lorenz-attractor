@@ -1,4 +1,4 @@
-requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, InputGroup) {
+requirejs(["Quaternion"], function (Quaternion) {
   $(function () {
       // integrates the lorentz equations and displays the result in a nice
       // flot graph with sliders.
@@ -7,96 +7,9 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
       // sliders: http://jqueryui.com/
       // the maths: http://en.wikipedia.org/wiki/Lorenz_system
 
-      // set up input boxes.
-      var parmInputs = new InputGroup(
-        {
-          sigma:
-            {
-              selector: "#sigma",    
-              init: 10,
-              min: 0,
-              max: 30,
-              slider: true,
-              step: 0.1
-            },
-          rho:
-            {
-              selector: "#rho",
-              init: 28,
-              min: 0,
-              max: 100,
-              slider: true,
-              step: 0.1
-            },
-          beta:
-            {
-              selector: "#beta",
-              init: 2.66,
-              min: 0,
-              max: 30,
-              slider: true,
-              step: 0.1
-            }
-        });
-
-      var ranInputs = new InputGroup(
-        {
-          vary:
-            {
-              selector: "#ranVary",
-              init: 0,
-              min: 0,
-              max: 50,
-              slider: true,
-              step: 0.1
-            },
-          spread:
-            {
-              selector: "#ranSpread",
-              init: 0,
-              min: 0,
-              max: 10,
-              slider: true,
-              step: 0.1
-            }
-        });
-
-      var zoomInput = new Input(
-            {
-              selector: "#zoom",
-              init: 1,
-              min: 0.1,
-              max: 10,
-              slider: true,
-              step: 0.1
-            });
-
-      var updateInput = new Input(
-            {
-              selector: "#updateInterval",
-              init: 50,
-              min: 20,
-              max: 1000,
-              slider: false
-            });
-
-      var seriesInput = new Input(
-            {
-              selector: "#numSeries",
-              init: 1,
-              min: 1,
-              max: 20,
-              slider: false
-            });
-
-      var seriesLenInput = new Input(
-          {
-            selector: "#seriesLen",
-            init: 1000,
-            min: 1,
-            max: 2000,
-            slider: false
-          });
+      var sigma = 10.0;
+      var rho = 28.0;
+      var beta = 2.66;
 
       // the array of raw data for all the plot series
       var data = [[]];
@@ -104,8 +17,6 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
       var totalPoints = 1000;
       // length of the axes on the graph.
       var axisLength = 3;
-      // true when running.
-      var running = true;
       // true during mouse drag.
       var dragging = false;
       // true if shift key down.
@@ -151,17 +62,19 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
       // scale of the plot (0-10);
       var scale = 1;
 
+      var vary = 22.0;
+      var spread = 3.0;
+
       function getInitialPoints(random) {
         // get some random starting points.
         var centrePoint = [];
-        var vary = ranInputs.getMember('vary').getValue();
-        var spread = ranInputs.getMember('spread').getValue();
+        
         for (var axis = 0; axis < 3; axis++) {
           centrePoint[axis] = 0.1 +
             2 * Math.random() * vary - vary;
         }
         for (var series = 0; series < numSeries; series++) {
-          if (random && running || initialPoints[series] === undefined) {
+          if (random || initialPoints[series] === undefined) {
             initialPoints[series] = [];
             for (var axis = 0; axis < 3; axis++) {
               initialPoints[series][axis] = centrePoint[axis] +
@@ -184,9 +97,9 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
         }
         var next = [
           // integrate the lorenz equations.
-          prev[0] + dt * (parmVals.sigma * (prev[1] - prev[0])),
-          prev[1] + dt * (prev[0] * (parmVals.rho - prev[2]) - prev[1]),
-          prev[2] + dt * (prev[0] * prev[1] - parmVals.beta * prev[2])
+          prev[0] + dt * (sigma * (prev[1] - prev[0])),
+          prev[1] + dt * (prev[0] * (rho - prev[2]) - prev[1]),
+          prev[2] + dt * (prev[0] * prev[1] - beta * prev[2])
           ];
         sData.push(next);
         data[series] = sData;
@@ -207,7 +120,7 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
         }
       }
 
-      function getAxisSeries(axis) {
+      /* function getAxisSeries(axis) {
         // get the series for the axes
         var colour = "rgba(";
         for (var i = 0; i < 3; i++) {
@@ -230,7 +143,7 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
             ]
           ]
         };
-      }
+      } */
 
       function getAllSeries(axes) {
         // get all data series plus the axes.
@@ -238,9 +151,9 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
         for (var series = 0; series < numSeries; series++) {
           ret.push(getSeries(series, axes));
         }
-        for (var axis = 0; axis < 3; axis++) {
+        /* for (var axis = 0; axis < 3; axis++) {
           ret.push(getAxisSeries(axis));
-        }
+        } */
         return ret;
       }
 
@@ -301,41 +214,6 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
         plot = $.plot($("#chart"), getAllSeries(axes), options);
       }
 
-      function getParms() {
-        // put the input values for the parameters into the equation.
-        parmInputs.iterMembers(function(parm, input) {
-          parmVals[parm] = input.getValue();
-          });
-      }
-
-      // set up the buttons.
-      $("#restart").click(function (evt) {
-            data = [];
-            numSeries = seriesInput.getValue();
-            getParms();
-            getInitialPoints($("#randomise").is(":checked"));
-            running = true;
-            $("#pause").text("Pause");
-          });
-
-      $("#resetParms").click(function (evt) {
-          parmInputs.iterMembers(function(parm, input) {
-            input.reset();
-            });
-          });
-
-      $("#pause").click(function (evt) {
-          if (running) {
-            $("#pause").text("Play");
-            running = false;
-          } else {
-            $("#pause").text("Pause");
-            running = true;
-          }
-        });
-
-      $("#resetAxes").click(resetAxes);
-
       // do mouse drag events.
       chartPos = $("#chart").position();
 
@@ -363,22 +241,6 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
           };
         });
 
-      // detect shift key
-      $(document).keydown(function(e) {
-          if (e.which === 16) {
-            shifty = true;
-          }
-        });
-
-      $(document).keyup(function(e) {
-          if (e.which === 16) {
-            shifty = false;
-          }
-        });
-
-      // get the initial parameter values.
-      getParms();
-
       // get an initial data point.
       getInitialPoints(true);
      
@@ -387,35 +249,9 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
 
       function update() {
         // do the animation loop.
-        if (zoomInput.getChanged()) {
-          // the zoom value has changed.
-          scale = zoomInput.getValue();
-          zoomInput.setChanged(false);
-          makePlot();
-        }
-        if (seriesLenInput.getChanged()) {
-          // length of series has changed.
-          totalPoints = seriesLenInput.getValue();
-          seriesLenInput.setChanged(false);
-        }
-        if (running) {
-          // animation running.
-          for (var i = 0; i < iters; i++) {
-            // do iters iterations of the lorenz equations.
-            addAllDataPoints();
-          }
-          parmInputs.setChanged(false);
-        } else {
-          // animation not running
-          if (parmInputs.getChanged()) {
-            // one of the parameter values has changed, so redraw from the start.
-            parmInputs.setChanged(false);
-            getParms();
-            data = [];
-            for (var i = 0; i < totalPoints; i++) {
-              addAllDataPoints();
-            }
-          }
+        for (var i = 0; i < iters; i++) {
+          // do iters iterations of the lorenz equations.
+          addAllDataPoints();
         }
         if (dragging && dragOrigin !== null) {
           // the mouse is being dragged.
@@ -445,7 +281,7 @@ requirejs(["Quaternion", "Input", "InputGroup"], function (Quaternion, Input, In
         }
         plot.setData(getAllSeries(axes));
         plot.draw();
-        setTimeout(update, updateInput.getValue());
+        setTimeout(update, updateInterval);
       }
 
       update();
