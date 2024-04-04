@@ -11,20 +11,10 @@ requirejs(["Quaternion"], function (Quaternion) {
       var rho = 28.0;
       var beta = 2.66;
 
-      // the array of raw data for all the plot series
-      var data = [[]];
       // maxiumum number of points in the series.
-      var totalPoints = 1000;
+      var totalPoints = 100;
       // length of the axes on the graph.
       var axisLength = 3;
-      // true during mouse drag.
-      var dragging = false;
-      // true if shift key down.
-      var shifty = false;
-      // drag origin
-      var dragOrigin = null;
-      // current drag Position relative to drag start.
-      var dragPos = null;
       // total rotation quaternion
       var rotation = new Quaternion(1, 0, 0, 0);
       // rotation during this mouse drag
@@ -50,7 +40,12 @@ requirejs(["Quaternion"], function (Quaternion) {
       // parameter values to use in equation.
       var parmVals = {};
       // the number of data series.
-      var numSeries = 1;
+      var numSeries = 30;
+      // the array of raw data for all the plot series
+      var data = [];
+      for (var series = 0; series < numSeries; series++) {
+        data.push([])
+      }
 
       // default values of parameters etc.
       var dt = 0.01;
@@ -60,31 +55,43 @@ requirejs(["Quaternion"], function (Quaternion) {
       var plot; // object to store the flot plot in.
 
       // scale of the plot (0-10);
-      var scale = 1;
+      var scale = 1.5;
 
       var vary = 22.0;
-      var spread = 3.0;
+      var spread = 200.0;
 
       function getInitialPoints(random) {
         // get some random starting points.
         var centrePoint = [];
-        
-        for (var axis = 0; axis < 3; axis++) {
-          centrePoint[axis] = 0.1 +
-            2 * Math.random() * vary - vary;
-        }
+
         for (var series = 0; series < numSeries; series++) {
           if (random || initialPoints[series] === undefined) {
             initialPoints[series] = [];
             for (var axis = 0; axis < 3; axis++) {
-              initialPoints[series][axis] = centrePoint[axis] +
-                2 * Math.random() * spread - spread;
+              initialPoints[series][axis] = 2 * Math.random() * vary - vary;
             }
           }
         }
+        
+        // for (var axis = 0; axis < 3; axis++) {
+        //   centrePoint[axis] = 0.1 +
+        //     2 * Math.random() * vary - vary;
+        // }
+        // for (var series = 0; series < numSeries; series++) {
+        //   if (random || initialPoints[series] === undefined) {
+        //     initialPoints[series] = [];
+        //     for (var axis = 0; axis < 3; axis++) {
+        //       initialPoints[series][axis] = centrePoint[axis] +
+        //         2 * Math.random() * spread - spread;
+        //     }
+        //   }
+        // }
       }
 
       function addDataPoint(series) {
+        // use current time to switch on/off the diffusion coefficient
+        var t = Date.now() / 1000
+        var eta = (Math.sin(t/2) + 1) / 2 
         // add a new data point to data[series].
         if (data[series] === undefined) {
           data[series] = [];
@@ -97,9 +104,9 @@ requirejs(["Quaternion"], function (Quaternion) {
         }
         var next = [
           // integrate the lorenz equations.
-          prev[0] + dt * (sigma * (prev[1] - prev[0])),
-          prev[1] + dt * (prev[0] * (rho - prev[2]) - prev[1]),
-          prev[2] + dt * (prev[0] * prev[1] - beta * prev[2])
+          prev[0] + (1-eta) * dt * (sigma * (prev[1] - prev[0])) + dt * eta * (Math.random() - 0.5) * spread,
+          prev[1] + (1-eta) * dt * (prev[0] * (rho - prev[2]) - prev[1]) + dt * eta * (Math.random() - 0.5) * spread,
+          prev[2] + (1-eta) * dt * (prev[0] * prev[1] - beta * prev[2]) + dt * eta * (Math.random() - 0.5) * spread
           ];
         sData.push(next);
         data[series] = sData;
@@ -120,40 +127,12 @@ requirejs(["Quaternion"], function (Quaternion) {
         }
       }
 
-      /* function getAxisSeries(axis) {
-        // get the series for the axes
-        var colour = "rgba(";
-        for (var i = 0; i < 3; i++) {
-          var col = (i === axis) ? 255 : 64;
-          colour += col + ",";
-        }
-        if (axes[axis][2] >= 0) {
-          colour += "0.7)";
-        } else {
-          colour += "0.3)";
-        }
-        return {
-          color: colour,
-          lines: {lineWidth: 2},
-          data: [
-            [0, 0],
-            [
-              axisLength * axes[axis][0], 
-              axisLength * axes[axis][1]
-            ]
-          ]
-        };
-      } */
-
       function getAllSeries(axes) {
         // get all data series plus the axes.
         var ret=[];
         for (var series = 0; series < numSeries; series++) {
           ret.push(getSeries(series, axes));
         }
-        /* for (var axis = 0; axis < 3; axis++) {
-          ret.push(getAxisSeries(axis));
-        } */
         return ret;
       }
 
@@ -208,38 +187,12 @@ requirejs(["Quaternion"], function (Quaternion) {
         var yscale = xscale * $("#chart").height() / $("#chart").width();
         var options = {
             series: { shadowSize: 0 }, // drawing is faster without shadows
-            yaxis: { min: -yscale, max: yscale },
-            xaxis: { min: -xscale, max: xscale }
+            yaxis: { min: -yscale, max: yscale, show: false },
+            xaxis: { min: -xscale, max: xscale, show: false },
+            grid: {show: false}
         };
         plot = $.plot($("#chart"), getAllSeries(axes), options);
       }
-
-      // do mouse drag events.
-      chartPos = $("#chart").position();
-
-      $("#chart").mousedown(function (evt) {
-          dragging = true;
-          dragOrigin = null;
-        });
-
-      $("#chart").mouseup(function (evt) {
-          dragging = false;
-          rotation = curRot;
-        });
-
-      $("#chart").mousemove(function(evt) {
-          if (!dragging) return;
-          if (dragOrigin === null) {
-            dragOrigin = {
-              x: evt.pageX,
-              y: evt.pageY
-            };
-          }
-          dragPos = {
-            x: evt.pageX - dragOrigin.x,
-            y: evt.pageY - dragOrigin.y
-          };
-        });
 
       // get an initial data point.
       getInitialPoints(true);
@@ -253,32 +206,45 @@ requirejs(["Quaternion"], function (Quaternion) {
           // do iters iterations of the lorenz equations.
           addAllDataPoints();
         }
-        if (dragging && dragOrigin !== null) {
-          // the mouse is being dragged.
-          var angle, axis;
-          if (shifty) {
-            axis = [0, 0, 1];
-            angle = dragPos.x;
-          } else {
-            var dragDist = Math.sqrt(
-              dragPos.x * dragPos.x +
-              dragPos.y * dragPos.y
-            );
-            if (dragDist > 0) {
-              axis = [dragPos.y / dragDist, dragPos.x / dragDist, 0];
-            } else {
-              axis = [0, 1, 0, 0];
-            }
-            angle = dragDist;
-          }
-          angle *= 2 * Math.PI / dragScale;
-          dragRot.setAxisAngle(axis, angle);
-          curRot = dragRot.multiply(rotation);
-          for (var i = 0; i < 3; i++) {
-            // rotate the axes.
-            axes[i] = rotatePoint(origAxes[i], curRot);
-          }
-        }
+        // // Axis rotation
+        // // use current time to do axis rotation
+        // var t = Date.now() / 1000
+        // var theta = t / 2
+        // var cs = Math.cos(theta / 2)
+        // var sn = Math.sin(theta / 2)
+        // curRot.setValues(cs, 0.33 * sn, 0.33 * sn, 0.33 * sn)
+        // for (var i = 0; i < 3; i++) {
+        //   // rotate the axes.
+        //   axes[i] = rotatePoint(origAxes[i], curRot);
+        // }
+
+
+        // if (dragging && dragOrigin !== null) {
+        //   // the mouse is being dragged.
+        //   var angle, axis;
+        //   if (shifty) {
+        //     axis = [0, 0, 1];
+        //     angle = dragPos.x;
+        //   } else {
+        //     var dragDist = Math.sqrt(
+        //       dragPos.x * dragPos.x +
+        //       dragPos.y * dragPos.y
+        //     );
+        //     if (dragDist > 0) {
+        //       axis = [dragPos.y / dragDist, dragPos.x / dragDist, 0];
+        //     } else {
+        //       axis = [0, 1, 0, 0];
+        //     }
+        //     angle = dragDist;
+        //   }
+        //   angle *= 2 * Math.PI / dragScale;
+        //   dragRot.setAxisAngle(axis, angle);
+        //   curRot = dragRot.multiply(rotation);
+        //   for (var i = 0; i < 3; i++) {
+        //     // rotate the axes.
+        //     axes[i] = rotatePoint(origAxes[i], curRot);
+        //   }
+        // }
         plot.setData(getAllSeries(axes));
         plot.draw();
         setTimeout(update, updateInterval);
