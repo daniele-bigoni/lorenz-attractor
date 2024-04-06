@@ -60,6 +60,8 @@ requirejs(["Quaternion"], function (Quaternion) {
       var vary = 22.0;
       var spread = 200.0;
 
+      var switchFrequency = 0.2
+
       function getInitialPoints(random) {
         // get some random starting points.
         var centrePoint = [];
@@ -91,7 +93,7 @@ requirejs(["Quaternion"], function (Quaternion) {
       function addDataPoint(series) {
         // use current time to switch on/off the diffusion coefficient
         var t = Date.now() / 1000
-        var eta = (Math.sin(t/2) + 1) / 2 
+        var eta = (Math.sin(t * switchFrequency) + 1) / 2 
         // add a new data point to data[series].
         if (data[series] === undefined) {
           data[series] = [];

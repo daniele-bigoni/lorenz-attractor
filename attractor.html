@@ -16,9 +16,19 @@
     <script language="javascript" type="text/javascript" src="./flot/jquery.flot.uiConstants.js"></script>
     <script data-main="js/main" src="js/require.js"></script>
     
+    <script>
+      function resizeFunction() {
+        var height = $(document).height();
+        var width = $(document).width();
+        var w = document.getElementById("chartWrapper");
+        w.setAttribute("style", `height:${height}px;width:${width}px`)
+      }
+      window.addEventListener("resize", resizeFunction);
+      $(resizeFunction);
+    </script>
  </head>
   <body>
-    <div class="chartWrapper">
+    <div id="chartWrapper">
     <div id="chart" class="chart">
     </div>
     </div>
